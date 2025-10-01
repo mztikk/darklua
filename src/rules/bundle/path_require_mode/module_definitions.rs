@@ -24,6 +24,7 @@ pub(crate) struct BuildModuleDefinitions {
     module_definitions: IndexMap<String, ModuleDefinition>,
     module_name_permutator: CharPermutator,
     rename_type_declaration: RenameTypeDeclarationProcessor,
+    propagate_varargs: bool,
 }
 
 #[derive(Debug)]
@@ -41,13 +42,14 @@ impl ModuleDefinition {
 const BUNDLE_MODULES_VARIABLE_CACHE_FIELD: &str = "cache";
 
 impl BuildModuleDefinitions {
-    pub(crate) fn new(modules_identifier: impl Into<String>) -> Self {
+    pub(crate) fn new(modules_identifier: impl Into<String>, propagate_varargs: bool) -> Self {
         let modules_identifier = modules_identifier.into();
         Self {
             modules_identifier: modules_identifier.clone(),
             module_definitions: Default::default(),
             module_name_permutator: identifier_permutator(),
             rename_type_declaration: RenameTypeDeclarationProcessor::new(modules_identifier),
+            propagate_varargs,
         }
     }
 
@@ -143,11 +145,15 @@ impl BuildModuleDefinitions {
             Identifier::from(&self.modules_identifier),
             module_field_name,
         ))
-        .with_arguments(arguments)
-        .with_argument(Expression::variable_arguments())
-        .into();
+        .with_arguments(arguments);
 
-        Ok(new_require_call)
+        let new_require_call = if self.propagate_varargs {
+            new_require_call.with_argument(Expression::variable_arguments())
+        } else {
+            new_require_call
+        };
+
+        Ok(new_require_call.into())
     }
 
     fn generate_module_name(&mut self) -> String {
@@ -164,6 +170,8 @@ impl BuildModuleDefinitions {
         if self.module_definitions.is_empty() {
             return;
         }
+
+        let propagate_varargs = self.propagate_varargs;
 
         for module in self.module_definitions.values() {
             context.add_file_dependency(module.path.clone());
@@ -222,7 +230,12 @@ impl BuildModuleDefinitions {
                                 TableExpression::default().append_entry(
                                     TableEntry::from_string_key_and_value(
                                         MODULE_CONTENT_ENTRY,
-                                        FunctionCall::from_name(LOCAL_MODULE_IMPL_NAME).with_argument(Expression::variable_arguments()),
+                                        if propagate_varargs {
+                                            FunctionCall::from_name(LOCAL_MODULE_IMPL_NAME)
+                                                .with_argument(Expression::variable_arguments())
+                                        } else {
+                                            FunctionCall::from_name(LOCAL_MODULE_IMPL_NAME)
+                                        },
                                     ),
                                 ),
                             ))
@@ -238,13 +251,23 @@ impl BuildModuleDefinitions {
 
                 DoStatement::new(Block::new(
                     vec![
-                        LocalFunctionStatement::from_name(LOCAL_MODULE_IMPL_NAME, module.block).variadic()
-                            .into(),
-                        FunctionStatement::new(function_name, cached_block, Vec::new(), true)
-                            .with_return_type(ExpressionType::new(FunctionCall::from_name(
-                                LOCAL_MODULE_IMPL_NAME,
-                            )))
-                            .into(),
+                        if propagate_varargs {
+                            LocalFunctionStatement::from_name(LOCAL_MODULE_IMPL_NAME, module.block)
+                                .variadic()
+                        } else {
+                            LocalFunctionStatement::from_name(LOCAL_MODULE_IMPL_NAME, module.block)
+                        }
+                        .into(),
+                        FunctionStatement::new(
+                            function_name,
+                            cached_block,
+                            Vec::new(),
+                            propagate_varargs,
+                        )
+                        .with_return_type(ExpressionType::new(FunctionCall::from_name(
+                            LOCAL_MODULE_IMPL_NAME,
+                        )))
+                        .into(),
                     ],
                     None,
                 ))

@@ -62,7 +62,7 @@ impl<'a, 'b, 'resources, PathLocatorImpl: PathLocator>
             options,
             identifier_tracker: IdentifierTracker::new(),
             path_locator,
-            module_definitions: BuildModuleDefinitions::new(options.modules_identifier()),
+            module_definitions: BuildModuleDefinitions::new(options.modules_identifier(), options.propagate_varargs()),
             source: context.current_path().to_path_buf(),
             module_cache: Default::default(),
             require_stack: Default::default(),

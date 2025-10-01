@@ -21,6 +21,7 @@ pub(crate) struct BundleOptions {
     parser: Parser,
     modules_identifier: String,
     excludes: Option<wax::Any<'static>>,
+    propagate_varargs: bool,
 }
 
 impl BundleOptions {
@@ -28,6 +29,7 @@ impl BundleOptions {
         parser: Parser,
         modules_identifier: impl Into<String>,
         excludes: impl Iterator<Item = &'a str>,
+        propagate_varargs: bool,
     ) -> Self {
         let excludes: Vec<_> = excludes
             .filter_map(|exclusion| match wax::Glob::new(exclusion) {
@@ -52,6 +54,7 @@ impl BundleOptions {
                     .expect("exclude globs errors should be filtered and only emit a warning");
                 Some(any_pattern)
             },
+            propagate_varargs,
         }
     }
 
@@ -61,6 +64,10 @@ impl BundleOptions {
 
     fn modules_identifier(&self) -> &str {
         &self.modules_identifier
+    }
+
+    fn propagate_varargs(&self) -> bool {
+        self.propagate_varargs
     }
 
     fn is_excluded(&self, require: &Path) -> bool {
@@ -83,10 +90,11 @@ impl Bundler {
         parser: Parser,
         require_mode: BundleRequireMode,
         excludes: impl Iterator<Item = &'a str>,
+        propagate_varargs: bool,
     ) -> Self {
         Self {
             require_mode,
-            options: BundleOptions::new(parser, DEFAULT_MODULE_IDENTIFIER, excludes),
+            options: BundleOptions::new(parser, DEFAULT_MODULE_IDENTIFIER, excludes, propagate_varargs),
         }
     }
 
@@ -133,11 +141,12 @@ mod test {
             Parser::default(),
             BundleRequireMode::default(),
             std::iter::empty(),
+            false,
         )
     }
 
     fn new_rule_with_require_mode(mode: impl Into<BundleRequireMode>) -> Bundler {
-        Bundler::new(Parser::default(), mode.into(), std::iter::empty())
+        Bundler::new(Parser::default(), mode.into(), std::iter::empty(), false)
     }
 
     // the bundler rule should only be used internally by darklua

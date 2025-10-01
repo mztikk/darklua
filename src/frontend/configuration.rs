@@ -108,6 +108,7 @@ impl Configuration {
                 self.build_parser(),
                 bundle_config.require_mode().clone(),
                 bundle_config.excludes(),
+                bundle_config.propagate_varargs()
             )
             .with_modules_identifier(bundle_config.modules_identifier());
             Some(bundler)
@@ -263,6 +264,8 @@ pub struct BundleConfiguration {
     modules_identifier: Option<String>,
     #[serde(default, skip_serializing_if = "HashSet::is_empty")]
     excludes: HashSet<String>,
+    #[serde(default)]
+    propagate_varargs: bool,
 }
 
 impl BundleConfiguration {
@@ -272,6 +275,7 @@ impl BundleConfiguration {
             require_mode: require_mode.into(),
             modules_identifier: None,
             excludes: Default::default(),
+            propagate_varargs: false,
         }
     }
 
@@ -300,6 +304,10 @@ impl BundleConfiguration {
 
     pub(crate) fn excludes(&self) -> impl Iterator<Item = &str> {
         self.excludes.iter().map(AsRef::as_ref)
+    }
+
+    pub(crate) fn propagate_varargs(&self) -> bool {
+        self.propagate_varargs
     }
 }
 
