@@ -148,6 +148,7 @@ impl BuildModuleDefinitions {
             load_field,
         ))
         .with_arguments(arguments.with_argument(StringExpression::from_value(module_name)))
+        .with_argument(Expression::variable_arguments())
         .into();
 
         Ok(new_require_call)
@@ -195,7 +196,7 @@ impl BuildModuleDefinitions {
             .map(|(module_name, module)| {
                 let function_name =
                     FunctionName::from_name(modules_identifier.clone()).with_field(&module_name);
-                FunctionStatement::new(function_name, module.block, Vec::new(), false)
+                FunctionStatement::new(function_name, module.block, Vec::new(), false).with_parameter("...")
             })
             .map(Statement::from)
             .collect();
@@ -240,10 +241,10 @@ impl BuildModuleDefinitions {
                         TableExpression::default().append_entry(
                             TableEntry::from_string_key_and_value(
                                 module_content_entry,
-                                FunctionCall::from_prefix(IndexExpression::new(
+                                FunctionCall::new(IndexExpression::new(
                                     Identifier::from(&self.modules_identifier),
                                     Identifier::from(parameter_name),
-                                )),
+                                ).into(), TupleArguments::new(vec![Expression::variable_arguments()]).into(), None),
                             ),
                         ),
                     ),
@@ -253,7 +254,8 @@ impl BuildModuleDefinitions {
                     module_content_entry,
                 ))),
         )
-        .with_parameter(parameter_name);
+        .with_parameter(parameter_name)
+        .with_parameter("...");
 
         TableExpression::default()
             .append_entry(TableEntry::from_string_key_and_value(
