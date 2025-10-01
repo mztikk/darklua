@@ -144,6 +144,7 @@ impl BuildModuleDefinitions {
             module_field_name,
         ))
         .with_arguments(arguments)
+        .with_argument(Expression::variable_arguments())
         .into();
 
         Ok(new_require_call)
@@ -221,7 +222,7 @@ impl BuildModuleDefinitions {
                                 TableExpression::default().append_entry(
                                     TableEntry::from_string_key_and_value(
                                         MODULE_CONTENT_ENTRY,
-                                        FunctionCall::from_name(LOCAL_MODULE_IMPL_NAME),
+                                        FunctionCall::from_name(LOCAL_MODULE_IMPL_NAME).with_argument(Expression::variable_arguments()),
                                     ),
                                 ),
                             ))
@@ -237,9 +238,9 @@ impl BuildModuleDefinitions {
 
                 DoStatement::new(Block::new(
                     vec![
-                        LocalFunctionStatement::from_name(LOCAL_MODULE_IMPL_NAME, module.block)
+                        LocalFunctionStatement::from_name(LOCAL_MODULE_IMPL_NAME, module.block).variadic()
                             .into(),
-                        FunctionStatement::new(function_name, cached_block, Vec::new(), false)
+                        FunctionStatement::new(function_name, cached_block, Vec::new(), true)
                             .with_return_type(ExpressionType::new(FunctionCall::from_name(
                                 LOCAL_MODULE_IMPL_NAME,
                             )))
