@@ -67,6 +67,10 @@ impl RenameProcessor {
     }
 
     fn replace_identifier(&mut self, identifier: &mut String) {
+        if identifier == "..." {
+            return;
+        }
+        
         let original = mem::take(identifier);
         let obfuscated_name = self.generate_identifier();
 
